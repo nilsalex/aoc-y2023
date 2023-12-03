@@ -1,4 +1,6 @@
-const INPUT: &str = include_str!("../input02.txt");
+extern crate test;
+
+const INPUT: &str = include_str!("../inputs/input02.txt");
 
 fn part1(input: &str) -> usize {
     input
@@ -63,8 +65,40 @@ fn part2(input: &str) -> usize {
 }
 
 pub fn main() {
-    let lines = INPUT.trim_end();
+    let input = INPUT.trim_end();
 
-    println!("{}", part1(lines));
-    println!("{}", part2(lines));
+    println!("{}", part1(input));
+    println!("{}", part2(input));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    const TEST_INPUT: &str = include_str!("../test_inputs/input02.txt");
+
+    #[test]
+    fn test_part1() {
+        let input = TEST_INPUT.trim_end();
+        assert_eq!(part1(input), 8);
+    }
+
+    #[test]
+    fn test_part2() {
+        let input = TEST_INPUT.trim_end();
+        assert_eq!(part2(input), 2286);
+    }
+
+    #[bench]
+    fn bench_part1(b: &mut Bencher) {
+        let input = INPUT.trim_end();
+        b.iter(|| part1(input))
+    }
+
+    #[bench]
+    fn bench_part2(b: &mut Bencher) {
+        let input = INPUT.trim_end();
+        b.iter(|| part2(input))
+    }
 }

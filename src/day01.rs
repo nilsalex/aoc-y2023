@@ -1,136 +1,102 @@
-const INPUT: &[u8] = include_bytes!("../input01.txt");
+extern crate test;
 
-fn get_first_digit_in_line(line: &[u8]) -> (usize, u32) {
-    for (i, c) in line.iter().enumerate() {
-        match c {
-            b'0' => return (i, 0),
-            b'1' => return (i, 1),
-            b'2' => return (i, 2),
-            b'3' => return (i, 3),
-            b'4' => return (i, 4),
-            b'5' => return (i, 5),
-            b'6' => return (i, 6),
-            b'7' => return (i, 7),
-            b'8' => return (i, 8),
-            b'9' => return (i, 9),
-            _ => (),
+const INPUT: &[u8] = include_bytes!("../inputs/input01.txt");
+
+const CANDIDATES: [&[u8]; 9] = [
+    b"one", b"two", b"three", b"four", b"five", b"six", b"seven", b"eight", b"nine",
+];
+
+const REV_CANDIDATES: [&[u8]; 9] = [
+    b"eno", b"owt", b"eerht", b"ruof", b"evif", b"xis", b"neves", b"thgie", b"enin",
+];
+
+fn get_first_in_line(line: &[u8], candidates: &[&[u8]]) -> u32 {
+    let mut parser_state: [usize; 10] = [0; 10];
+    for c in line {
+        if c.is_ascii_digit() {
+            return (c - b'0') as u32;
+        }
+        if candidates.is_empty() {
+            continue;
+        }
+        for i in 0..=candidates.len() - 1 {
+            if *c != candidates[i][parser_state[i]] {
+                parser_state[i] = 0;
+                if *c != candidates[i][0] {
+                    continue;
+                }
+            }
+            if parser_state[i] < candidates[i].len() {
+                parser_state[i] += 1;
+            }
+            if parser_state[i] == candidates[i].len() {
+                return (i + 1) as u32;
+            }
         }
     }
     panic!();
 }
 
-fn get_last_digit_in_line(line: &[u8]) -> (usize, u32) {
-    for (i, c) in line.iter().rev().enumerate() {
-        match c {
-            b'0' => return (i, 0),
-            b'1' => return (i, 1),
-            b'2' => return (i, 2),
-            b'3' => return (i, 3),
-            b'4' => return (i, 4),
-            b'5' => return (i, 5),
-            b'6' => return (i, 6),
-            b'7' => return (i, 7),
-            b'8' => return (i, 8),
-            b'9' => return (i, 9),
-            _ => (),
-        }
-    }
-    panic!();
+pub fn solve(input: &[u8], fwd_candidates: &[&[u8]], rev_candidates: &[&[u8]]) -> u32 {
+    let mut result = 0;
+
+    input.split(|c| *c == b'\n').for_each(|line| {
+        let mut line = Vec::from(line);
+        let a = get_first_in_line(&line, fwd_candidates);
+
+        line.reverse();
+        let b = get_first_in_line(&line, rev_candidates);
+
+        result += 10 * a + b;
+    });
+
+    result
 }
 
-const CANDIDATES: [(&[u8], u32); 9] = [
-    (b"one", 1),
-    (b"two", 2),
-    (b"three", 3),
-    (b"four", 4),
-    (b"five", 5),
-    (b"six", 6),
-    (b"seven", 7),
-    (b"eight", 8),
-    (b"nine", 9),
-];
-
-const REV_CANDIDATES: [(&[u8], u32); 9] = [
-    (b"eno", 1),
-    (b"owt", 2),
-    (b"eerht", 3),
-    (b"ruof", 4),
-    (b"evif", 5),
-    (b"xis", 6),
-    (b"neves", 7),
-    (b"thgie", 8),
-    (b"enin", 9),
-];
-
-fn get_first_string_digit_in_line(line: &[u8]) -> Option<(usize, u32)> {
-    CANDIDATES
-        .into_iter()
-        .flat_map(|(candidate, value)| {
-            let index = line
-                .windows(candidate.len())
-                .position(|window| window == candidate)?;
-            Some((index, value))
-        })
-        .min_by_key(|(i, _)| *i)
+pub fn part1(input: &[u8]) -> u32 {
+    solve(input, &[], &[])
 }
 
-fn get_last_string_digit_in_line(line: &[u8]) -> Option<(usize, u32)> {
-    REV_CANDIDATES
-        .into_iter()
-        .flat_map(|(candidate, value)| {
-            let mut rev_line = Vec::from(line);
-            rev_line.reverse();
-            let index = rev_line
-                .windows(candidate.len())
-                .position(|window| window == candidate)?;
-            Some((index, value))
-        })
-        .min_by_key(|(i, _)| *i)
+pub fn part2(input: &[u8]) -> u32 {
+    solve(input, &CANDIDATES, &REV_CANDIDATES)
 }
 
 pub fn main() {
-    let lines = INPUT.trim_ascii_end().split(|c| *c == b'\n');
+    let input = INPUT.trim_ascii_end();
 
-    let result: u32 = lines
-        .clone()
-        .map(|line| {
-            let (_, a) = get_first_digit_in_line(line);
-            let (_, b) = get_last_digit_in_line(line);
+    println!("{}", part1(input));
+    println!("{}", part2(input));
+}
 
-            10 * a + b
-        })
-        .sum();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
 
-    println!("{}", result);
+    const TEST_INPUT1: &[u8] = include_bytes!("../test_inputs/input01_1.txt");
+    const TEST_INPUT2: &[u8] = include_bytes!("../test_inputs/input01_2.txt");
 
-    let result: u32 = lines
-        .clone()
-        .map(|line| {
-            let (i1, d1) = get_first_digit_in_line(line);
-            let a = if let Some((i2, d2)) = get_first_string_digit_in_line(line) {
-                if i1 < i2 {
-                    d1
-                } else {
-                    d2
-                }
-            } else {
-                d1
-            };
+    #[test]
+    fn test_part1() {
+        let input = TEST_INPUT1.trim_ascii_end();
+        assert_eq!(part1(input), 142);
+    }
 
-            let (i3, d3) = get_last_digit_in_line(line);
-            let b = if let Some((i4, d4)) = get_last_string_digit_in_line(line) {
-                if i3 < i4 {
-                    d3
-                } else {
-                    d4
-                }
-            } else {
-                d3
-            };
+    #[test]
+    fn test_part2() {
+        let input = TEST_INPUT2.trim_ascii_end();
+        assert_eq!(part2(input), 281);
+    }
 
-            10 * a + b
-        })
-        .sum();
+    #[bench]
+    fn bench_part1(b: &mut Bencher) {
+        let input = INPUT.trim_ascii_end();
+        b.iter(|| part1(input))
+    }
 
-    println!("{}", result);
+    #[bench]
+    fn bench_part2(b: &mut Bencher) {
+        let input = INPUT.trim_ascii_end();
+        b.iter(|| part2(input))
+    }
 }
