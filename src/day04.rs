@@ -2,7 +2,7 @@ extern crate test;
 
 use std::collections::HashSet;
 
-const INPUT: &str = include_str!("../inputs/input04.txt");
+const INPUT: &str = include_str!("../inputs/day04.txt");
 
 fn part1(input: &str) -> usize {
     input
@@ -82,7 +82,7 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    const TEST_INPUT: &str = include_str!("../test_inputs/input04.txt");
+    const TEST_INPUT: &str = include_str!("../test_inputs/day04.txt");
 
     #[test]
     fn test_part1() {

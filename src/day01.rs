@@ -1,6 +1,6 @@
 extern crate test;
 
-const INPUT: &[u8] = include_bytes!("../inputs/input01.txt");
+const INPUT: &[u8] = include_bytes!("../inputs/day01.txt");
 
 const CANDIDATES: [&[u8]; 9] = [
     b"one", b"two", b"three", b"four", b"five", b"six", b"seven", b"eight", b"nine",
@@ -73,8 +73,8 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    const TEST_INPUT1: &[u8] = include_bytes!("../test_inputs/input01_1.txt");
-    const TEST_INPUT2: &[u8] = include_bytes!("../test_inputs/input01_2.txt");
+    const TEST_INPUT1: &[u8] = include_bytes!("../test_inputs/day01_1.txt");
+    const TEST_INPUT2: &[u8] = include_bytes!("../test_inputs/day01_2.txt");
 
     #[test]
     fn test_part1() {

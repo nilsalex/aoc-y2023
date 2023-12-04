@@ -1,6 +1,6 @@
 extern crate test;
 
-const INPUT: &[u8] = include_bytes!("../inputs/input02.txt");
+const INPUT: &[u8] = include_bytes!("../inputs/day02.txt");
 
 const POWERS_OF_TEN: [u32; 3] = [1, 10, 100];
 
@@ -85,7 +85,7 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    const TEST_INPUT: &[u8] = include_bytes!("../test_inputs/input02.txt");
+    const TEST_INPUT: &[u8] = include_bytes!("../test_inputs/day02.txt");
 
     #[test]
     fn test_part1() {

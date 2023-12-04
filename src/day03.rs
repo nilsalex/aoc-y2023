@@ -2,7 +2,7 @@ extern crate test;
 
 use std::collections::HashSet;
 
-const INPUT: &[u8] = include_bytes!("../inputs/input03.txt");
+const INPUT: &[u8] = include_bytes!("../inputs/day03.txt");
 
 const POWERS_OF_TEN: [usize; 6] = [1, 10, 100, 1000, 10000, 100000];
 
@@ -181,7 +181,7 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    const TEST_INPUT: &[u8] = include_bytes!("../test_inputs/input03.txt");
+    const TEST_INPUT: &[u8] = include_bytes!("../test_inputs/day03.txt");
 
     #[test]
     fn test_part1() {
