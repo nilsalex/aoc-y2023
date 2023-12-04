@@ -5,11 +5,9 @@ const INPUT: &[u8] = include_bytes!("../inputs/input02.txt");
 const POWERS_OF_TEN: [u32; 3] = [1, 10, 100];
 
 fn u32_from_bytes(bytes: &[u8]) -> u32 {
-    bytes
-        .iter()
-        .rev()
-        .enumerate()
-        .fold(0, |acc, (ix, x)| acc + (x & 0x0f) as u32 * POWERS_OF_TEN[ix])
+    bytes.iter().rev().enumerate().fold(0, |acc, (ix, x)| {
+        acc + (x & 0x0f) as u32 * POWERS_OF_TEN[ix]
+    })
 }
 
 fn part1(input: &[u8]) -> u32 {
