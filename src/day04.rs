@@ -1,58 +1,45 @@
 extern crate test;
 
-use std::collections::HashSet;
-
 const INPUT: &str = include_str!("../inputs/day04.txt");
+
+fn get_winning_count(line: &str) -> u32 {
+    let numbers = line.split(": ").nth(1).unwrap();
+    let mut groups = numbers.split(" | ");
+    let winning: u128 = groups
+        .next()
+        .unwrap()
+        .split_whitespace()
+        .fold(0, |acc, num| {
+            let num: u32 = num.parse().unwrap();
+            acc | (1_u128 << (num - 1))
+        });
+    groups
+        .next()
+        .unwrap()
+        .split_whitespace()
+        .filter(|num| {
+            let num: u32 = num.parse().unwrap();
+            winning & (1_u128 << (num - 1)) != 0
+        })
+        .count() as u32
+}
 
 fn part1(input: &str) -> usize {
     input
         .lines()
         .map(|line| {
-            let numbers = line.split(": ").nth(1).unwrap();
-            let mut groups = numbers.split(" | ");
-            let winning: HashSet<u32> = groups
-                .next()
-                .unwrap()
-                .split_whitespace()
-                .map(|num| num.parse().unwrap())
-                .collect();
-            let actual: HashSet<u32> = groups
-                .next()
-                .unwrap()
-                .split_whitespace()
-                .map(|num| num.parse().unwrap())
-                .collect();
-            let actual_winning = winning.intersection(&actual).count();
-            if actual_winning == 0 {
+            let winning = get_winning_count(line);
+            if winning == 0 {
                 0
             } else {
-                2_usize.pow(actual_winning as u32 - 1)
+                1_usize << (winning - 1)
             }
         })
         .sum()
 }
 
 fn part2(input: &str) -> usize {
-    let winning_map: Vec<usize> = input
-        .lines()
-        .map(|line| {
-            let numbers = line.split(": ").nth(1).unwrap();
-            let mut groups = numbers.split(" | ");
-            let winning: HashSet<u32> = groups
-                .next()
-                .unwrap()
-                .split_whitespace()
-                .map(|num| num.parse().unwrap())
-                .collect();
-            let actual: HashSet<u32> = groups
-                .next()
-                .unwrap()
-                .split_whitespace()
-                .map(|num| num.parse().unwrap())
-                .collect();
-            winning.intersection(&actual).count()
-        })
-        .collect();
+    let winning_map: Vec<u32> = input.lines().map(get_winning_count).collect();
 
     let mut result = 0;
 
@@ -62,7 +49,7 @@ fn part2(input: &str) -> usize {
         let current = counts[i];
         result += current;
         let won = winning_map[i];
-        for count in counts.iter_mut().skip(i).take(won + 1) {
+        for count in counts.iter_mut().skip(i).take(won as usize + 1) {
             *count += current;
         }
     }
