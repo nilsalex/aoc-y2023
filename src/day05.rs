@@ -27,6 +27,10 @@ fn part1(input: &str) -> usize {
                 })
                 .collect();
             map.sort_by_key(|(a, _, _)| *a);
+            if map[0].0 != 0 {
+                map.push((0, 0, map[0].0));
+                map.sort_by_key(|(a, _, _)| *a);
+            }
             map
         })
         .collect();
@@ -92,34 +96,31 @@ fn process_seed_range(
         let map_range_start = map_entry.0;
         let diff = map_entry.1;
         let map_range_count = map_entry.2;
-        let map_range_end = map_range_start + map_range_count;
+        let map_range_end = map_range_start + map_range_count - 1;
 
         if from <= map_range_end {
-            let this_range_start = from;
+            let this_range_start = std::cmp::max(from, map_range_start);
             let this_range_end = std::cmp::min(map_range_end, to);
-            result.push(((this_range_start as isize + diff) as usize, (this_range_end as isize + diff) as usize));
+            result.push((
+                (this_range_start as isize + diff) as usize,
+                (this_range_end as isize + diff) as usize,
+            ));
         }
 
         if to > map_range_end {
-            let this_range_start = std::cmp::max(map_range_end+1, from);
+            let this_range_start = std::cmp::max(map_range_end + 1, from);
             let this_range_end = if index + 1 < map.len() {
-                std::cmp::min(to, map[index+1].0-1)
+                std::cmp::min(to, map[index + 1].0 - 1)
             } else {
                 to
             };
             if this_range_end >= this_range_start {
                 result.push((this_range_start, this_range_end));
             }
-        } 
+        }
     }
 
     result.sort_by_key(|(a, _)| *a);
-
-    println!("###################################");
-
-    println!("map: {:?}", map);
-    println!("range: {:?}", (from, to));
-    println!("result: {:?}", result);
 
     result
 }
@@ -154,6 +155,10 @@ fn part2(input: &str) -> usize {
                 })
                 .collect();
             map.sort_by_key(|(a, _, _)| *a);
+            if map[0].0 != 0 {
+                map.push((0, 0, map[0].0));
+                map.sort_by_key(|(a, _, _)| *a);
+            }
             map
         })
         .collect();
