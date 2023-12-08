@@ -2,8 +2,7 @@ extern crate test;
 
 const INPUT: &[u8] = include_bytes!("../inputs/day07.txt");
 
-fn get_value(hand: &[u8]) -> u8 {
-    let mut hand = Vec::from(hand);
+fn get_value(hand: &mut [u8]) -> u8 {
     hand.sort();
     let mut counts: Vec<u8> = vec![];
     let mut current_count: u8 = 1;
@@ -41,9 +40,9 @@ fn get_value(hand: &[u8]) -> u8 {
     }
 }
 
-fn get_value_with_joker(hand: &[u8]) -> u8 {
+fn get_value_with_joker(hand: &mut [u8]) -> u8 {
     let value = get_value(hand);
-    let num_jokers = hand.iter().filter(|c| **c == 1).count();
+    let num_jokers = hand.iter().filter(|c| **c == b'J').count();
     if num_jokers == 0 {
         value
     } else {
@@ -67,80 +66,76 @@ fn get_value_with_joker(hand: &[u8]) -> u8 {
 }
 
 fn part1(input: &[u8]) -> usize {
-    let mut hands: Vec<(Vec<u8>, usize)> = input
+    let mut hands: Vec<u64> = input
         .split(|c| *c == b'\n')
         .map(|line| {
-            let mut groups = line.split(|c| *c == b' ');
-            let hand: Vec<u8> = groups
-                .next()
-                .unwrap()
-                .iter()
-                .map(|c| match c {
-                    b'2'..=b'9' => c - b'0',
-                    b'T' => 10,
-                    b'J' => 11,
-                    b'Q' => 12,
-                    b'K' => 13,
-                    b'A' => 14,
+            let entry = 0_u64;
+            let hand = line.iter().take(5).enumerate().fold(entry, |acc, (i, c)| {
+                let bits: u64 = match c {
+                    b'2'..=b'9' => (c - b'2') as u64,
+                    b'T' => 8,
+                    b'J' => 9,
+                    b'Q' => 10,
+                    b'K' => 11,
+                    b'A' => 12,
                     _ => panic!(),
-                })
-                .collect();
-            let value = get_value(&hand);
-            let hand = [&[value], &hand[..]].concat();
-            let bid = groups
-                .next()
-                .unwrap()
+                } << (64 - 4 * (i + 2));
+                acc | bits
+            });
+            let mut hand_buf = [0; 5];
+            hand_buf.copy_from_slice(&line[0..=4]);
+            let value = (get_value(&mut hand_buf) as u64) << 60;
+            let bid = line
                 .iter()
-                .fold(0, |acc, digit| 10 * acc + (digit - b'0') as usize);
-            (hand, bid)
+                .skip(6)
+                .fold(0, |acc, digit| 10 * acc + (digit - b'0') as u64);
+            value | hand | bid
         })
         .collect();
 
-    hands.sort_by(|(hand1, _), (hand2, _)| hand1.cmp(hand2));
+    hands.sort();
 
     hands
         .iter()
         .enumerate()
-        .map(|(index, (_, bid))| (index + 1) * bid)
+        .map(|(index, bid)| (index + 1) * (bid & 0xfff) as usize)
         .sum()
 }
 
 fn part2(input: &[u8]) -> usize {
-    let mut hands: Vec<(Vec<u8>, usize)> = input
+    let mut hands: Vec<u64> = input
         .split(|c| *c == b'\n')
         .map(|line| {
-            let mut groups = line.split(|c| *c == b' ');
-            let hand: Vec<u8> = groups
-                .next()
-                .unwrap()
-                .iter()
-                .map(|c| match c {
-                    b'2'..=b'9' => c - b'0',
-                    b'T' => 10,
-                    b'J' => 1,
-                    b'Q' => 11,
-                    b'K' => 12,
-                    b'A' => 13,
+            let entry = 0_u64;
+            let hand = line.iter().take(5).enumerate().fold(entry, |acc, (i, c)| {
+                let bits: u64 = match c {
+                    b'2'..=b'9' => (c - b'1') as u64,
+                    b'T' => 9,
+                    b'J' => 0,
+                    b'Q' => 10,
+                    b'K' => 11,
+                    b'A' => 12,
                     _ => panic!(),
-                })
-                .collect();
-            let value = get_value_with_joker(&hand);
-            let hand = [&[value], &hand[..]].concat();
-            let bid = groups
-                .next()
-                .unwrap()
+                } << (64 - 4 * (i + 2));
+                acc | bits
+            });
+            let mut hand_buf = [0; 5];
+            hand_buf.copy_from_slice(&line[0..=4]);
+            let value = (get_value_with_joker(&mut hand_buf) as u64) << 60;
+            let bid = line
                 .iter()
-                .fold(0, |acc, digit| 10 * acc + (digit - b'0') as usize);
-            (hand, bid)
+                .skip(6)
+                .fold(0, |acc, digit| 10 * acc + (digit - b'0') as u64);
+            value | hand | bid
         })
         .collect();
 
-    hands.sort_by(|(hand1, _), (hand2, _)| hand1.cmp(hand2));
+    hands.sort();
 
     hands
         .iter()
         .enumerate()
-        .map(|(index, (_, bid))| (index + 1) * bid)
+        .map(|(index, bid)| (index + 1) * (bid & 0xfff) as usize)
         .sum()
 }
 
