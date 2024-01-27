@@ -5,35 +5,7 @@ use std::collections::BinaryHeap;
 
 const INPUT: &[u8] = include_bytes!("../inputs/day17.txt");
 
-enum Either<A, B> {
-    A(A),
-    B(B),
-}
-
-impl<A, B> Iterator for Either<A, B>
-where
-    A: Iterator,
-    B: Iterator<Item = A::Item>,
-{
-    type Item = A::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Either::A(a) => a.next(),
-            Either::B(b) => b.next(),
-        }
-    }
-}
-
-fn get_range(start: isize, end: isize) -> impl Iterator<Item = isize> {
-    if start < end {
-        Either::A(start..=end)
-    } else {
-        Either::B(end..=start)
-    }
-}
-
-#[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
 enum Dir {
     U = 0,
     D = 1,
@@ -76,130 +48,45 @@ impl Grid {
         row * self.cols + col
     }
 
-    fn get_edges(&self, node: Node) -> Vec<Edge> {
-        let this_cost = self.cells[self.get_pos(node.row, node.col)];
-
-        let (row_i, col_i) = (node.row as isize, node.col as isize);
-
-        let candidates = match node.dir {
-            Dir::U | Dir::D => [
-                ((row_i, col_i - 3), Dir::L),
-                ((row_i, col_i - 2), Dir::L),
-                ((row_i, col_i - 1), Dir::L),
-                ((row_i, col_i + 1), Dir::R),
-                ((row_i, col_i + 2), Dir::R),
-                ((row_i, col_i + 3), Dir::R),
-            ],
-            Dir::L | Dir::R => [
-                ((row_i - 3, col_i), Dir::U),
-                ((row_i - 2, col_i), Dir::U),
-                ((row_i - 1, col_i), Dir::U),
-                ((row_i + 1, col_i), Dir::D),
-                ((row_i + 2, col_i), Dir::D),
-                ((row_i + 3, col_i), Dir::D),
-            ],
-        };
-
-        candidates
-            .into_iter()
-            .filter(|((row_i, col_i), _)| {
-                *row_i >= 0
-                    && *row_i < self.rows as isize
-                    && *col_i >= 0
-                    && *col_i < self.cols as isize
-            })
-            .map(|((next_row_i, next_col_i), dir)| {
-                let mut cost = 0;
-
-                for r in get_range(row_i, next_row_i) {
-                    for c in get_range(col_i, next_col_i) {
-                        cost += self.cells[self.get_pos(r as usize, c as usize)];
-                    }
-                }
-
-                cost -= this_cost;
-
-                Edge {
-                    node: Node {
-                        row: next_row_i as usize,
-                        col: next_col_i as usize,
-                        dir,
-                    },
-                    cost,
-                }
-            })
-            .collect::<Vec<Edge>>()
+    fn is_in_bounds(&self, pos: &(isize, isize)) -> bool {
+        pos.0 >= 0 && pos.1 >= 0 && pos.0 < self.rows as isize && pos.1 < self.cols as isize
     }
 
-    fn get_edges_ultra(&self, node: Node) -> Vec<Edge> {
-        let this_cost = self.cells[self.get_pos(node.row, node.col)];
+    fn get_edges(&self, node: Node, min_steps: usize, max_steps: usize) -> Vec<Edge> {
+        let mut result = Vec::new();
 
-        let (row_i, col_i) = (node.row as isize, node.col as isize);
-
-        let candidates = match node.dir {
-            Dir::U | Dir::D => [
-                ((row_i, col_i - 10), Dir::L),
-                ((row_i, col_i - 9), Dir::L),
-                ((row_i, col_i - 8), Dir::L),
-                ((row_i, col_i - 7), Dir::L),
-                ((row_i, col_i - 6), Dir::L),
-                ((row_i, col_i - 5), Dir::L),
-                ((row_i, col_i - 4), Dir::L),
-                ((row_i, col_i + 4), Dir::R),
-                ((row_i, col_i + 5), Dir::R),
-                ((row_i, col_i + 6), Dir::R),
-                ((row_i, col_i + 7), Dir::R),
-                ((row_i, col_i + 8), Dir::R),
-                ((row_i, col_i + 9), Dir::R),
-                ((row_i, col_i + 10), Dir::R),
-            ],
-            Dir::L | Dir::R => [
-                ((row_i - 10, col_i), Dir::U),
-                ((row_i - 9, col_i), Dir::U),
-                ((row_i - 8, col_i), Dir::U),
-                ((row_i - 7, col_i), Dir::U),
-                ((row_i - 6, col_i), Dir::U),
-                ((row_i - 5, col_i), Dir::U),
-                ((row_i - 4, col_i), Dir::U),
-                ((row_i + 4, col_i), Dir::D),
-                ((row_i + 5, col_i), Dir::D),
-                ((row_i + 6, col_i), Dir::D),
-                ((row_i + 7, col_i), Dir::D),
-                ((row_i + 8, col_i), Dir::D),
-                ((row_i + 9, col_i), Dir::D),
-                ((row_i + 10, col_i), Dir::D),
-            ],
+        let arms = match node.dir {
+            Dir::U | Dir::D => [(Dir::R, (0, 1)), (Dir::L, (0, -1))],
+            Dir::L | Dir::R => [(Dir::D, (1, 0)), (Dir::U, (-1, 0))],
         };
+        for (dir, (delta_row, delta_col)) in arms {
+            let mut cost = 0;
+            for d in 1..=max_steps {
+                let pos = (
+                    node.row as isize + d as isize * delta_row,
+                    node.col as isize + d as isize * delta_col,
+                );
 
-        candidates
-            .into_iter()
-            .filter(|((row_i, col_i), _)| {
-                *row_i >= 0
-                    && *row_i < self.rows as isize
-                    && *col_i >= 0
-                    && *col_i < self.cols as isize
-            })
-            .map(|((next_row_i, next_col_i), dir)| {
-                let mut cost = 0;
-
-                for r in get_range(row_i, next_row_i) {
-                    for c in get_range(col_i, next_col_i) {
-                        cost += self.cells[self.get_pos(r as usize, c as usize)];
-                    }
+                if !self.is_in_bounds(&pos) {
+                    break;
                 }
 
-                cost -= this_cost;
+                cost += self.cells[self.get_pos(pos.0 as usize, pos.1 as usize)];
 
-                Edge {
-                    node: Node {
-                        row: next_row_i as usize,
-                        col: next_col_i as usize,
-                        dir,
-                    },
-                    cost,
+                if d >= min_steps {
+                    result.push(Edge {
+                        node: Node {
+                            row: pos.0 as usize,
+                            col: pos.1 as usize,
+                            dir,
+                        },
+                        cost,
+                    });
                 }
-            })
-            .collect::<Vec<Edge>>()
+            }
+        }
+
+        result
     }
 
     fn get_node_index(&self, node: &Node) -> usize {
@@ -207,19 +94,17 @@ impl Grid {
     }
 }
 
+#[derive(Debug)]
 struct Edge {
     node: Node,
     cost: usize,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Node {
     row: usize,
     col: usize,
     dir: Dir,
-}
-
-impl Node {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -243,7 +128,13 @@ impl PartialOrd for State {
     }
 }
 
-fn shortest_path(grid: &Grid, start: Node, goal: Node, ultra: bool) -> Option<usize> {
+fn shortest_path(
+    grid: &Grid,
+    start: Node,
+    goal: Node,
+    ultra: bool,
+    adj_cache: &mut [Option<Vec<Edge>>],
+) -> Option<usize> {
     let mut dist: Vec<usize> = vec![usize::MAX; 4 * grid.len()];
     let mut heap: BinaryHeap<State> = BinaryHeap::new();
 
@@ -258,15 +149,24 @@ fn shortest_path(grid: &Grid, start: Node, goal: Node, ultra: bool) -> Option<us
             return Some(cost);
         }
 
-        if cost > dist[grid.get_node_index(&node)] {
+        let node_index = grid.get_node_index(&node);
+        if cost > dist[node_index] {
             continue;
         }
 
-        let edges = if ultra {
-            grid.get_edges_ultra(node)
+        let (min_steps, max_steps) = if ultra { (4, 10) } else { (1, 3) };
+
+        let edges;
+        if let Some(cached_edges) = &adj_cache[node_index] {
+            edges = cached_edges;
         } else {
-            grid.get_edges(node)
-        };
+            adj_cache[node_index] = Some(grid.get_edges(node, min_steps, max_steps));
+            if let Some(tmp_edges) = &adj_cache[node_index] {
+                edges = tmp_edges
+            } else {
+                panic!();
+            }
+        }
 
         for edge in edges {
             let next = State {
@@ -284,10 +184,9 @@ fn shortest_path(grid: &Grid, start: Node, goal: Node, ultra: bool) -> Option<us
     None
 }
 
-fn part1(input: &[u8]) -> usize {
-    let grid = Grid::parse(input);
-
+fn solve(grid: &Grid, ultra: bool) -> usize {
     let mut result = usize::MAX;
+    let mut adj_cache = (0..grid.size * 4).map(|_| None).collect::<Vec<_>>();
 
     for start_dir in [Dir::D, Dir::R] {
         for end_dir in [Dir::D, Dir::R] {
@@ -301,7 +200,7 @@ fn part1(input: &[u8]) -> usize {
                 col: grid.cols - 1,
                 dir: end_dir,
             };
-            if let Some(dist) = shortest_path(&grid, start, goal, false) {
+            if let Some(dist) = shortest_path(grid, start, goal, ultra, &mut adj_cache) {
                 result = std::cmp::min(result, dist);
             }
         }
@@ -310,30 +209,14 @@ fn part1(input: &[u8]) -> usize {
     result
 }
 
+fn part1(input: &[u8]) -> usize {
+    let grid = Grid::parse(input);
+    solve(&grid, false)
+}
+
 fn part2(input: &[u8]) -> usize {
     let grid = Grid::parse(input);
-
-    let mut result = usize::MAX;
-
-    for start_dir in [Dir::D, Dir::R] {
-        for end_dir in [Dir::D, Dir::R] {
-            let start = Node {
-                row: 0,
-                col: 0,
-                dir: start_dir,
-            };
-            let goal = Node {
-                row: grid.rows - 1,
-                col: grid.cols - 1,
-                dir: end_dir,
-            };
-            if let Some(dist) = shortest_path(&grid, start, goal, true) {
-                result = std::cmp::min(result, dist);
-            }
-        }
-    }
-
-    result
+    solve(&grid, true)
 }
 
 pub fn main() {
