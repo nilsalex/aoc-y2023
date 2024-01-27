@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Prepare inputs
+      run: mkdir -p ./inputs && cp ./test_inputs/* ./inputs/
     - name: Build
       run: cargo build --verbose
     - name: Run tests
