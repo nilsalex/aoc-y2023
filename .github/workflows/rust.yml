@@ -17,10 +17,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: nightly
-        override: true
         components: rustfmt, clippy
     - name: Prepare inputs
       run: mkdir -p ./inputs && cp ./test_inputs/* ./inputs/
