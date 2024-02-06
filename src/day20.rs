@@ -2,9 +2,11 @@ extern crate test;
 
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::fmt::Debug;
 
 const INPUT: &[u8] = include_bytes!("../inputs/day20.txt");
 
+#[derive(Debug)]
 struct Broadcast {
     id: usize,
     destinations: Vec<usize>,
@@ -30,11 +32,13 @@ impl Module for Broadcast {
     }
 }
 
+#[derive(Debug)]
 enum FlipFlopState {
     On,
     Off,
 }
 
+#[derive(Debug)]
 struct FlipFlop {
     id: usize,
     destinations: Vec<usize>,
@@ -79,6 +83,7 @@ enum Signal {
     High,
 }
 
+#[derive(Debug)]
 struct Conjunction {
     id: usize,
     destinations: Vec<usize>,
@@ -107,13 +112,14 @@ impl Module for Conjunction {
         self.inputs[pos].1 = signal;
 
         if self.inputs.iter().all(|(_, s)| matches!(s, Signal::High)) {
-            Either::Right((Signal::High, self.destinations.clone()))
-        } else {
             Either::Right((Signal::Low, self.destinations.clone()))
+        } else {
+            Either::Right((Signal::High, self.destinations.clone()))
         }
     }
 }
 
+#[derive(Debug)]
 struct Output {
     id: usize,
 }
@@ -143,7 +149,7 @@ enum Either<S, T> {
     Right(T),
 }
 
-trait Module {
+trait Module: std::fmt::Debug {
     fn add_input(&mut self, id: usize);
     fn get_id(&self) -> usize;
     fn get_destinations(&self) -> &[usize];
@@ -243,7 +249,7 @@ impl IdMap {
 fn part1(input: &[u8]) -> usize {
     let id_map = IdMap::parse(input);
 
-    let mut modules: Vec<_> = input
+    let mut modules: Vec<Box<dyn Module>> = input
         .split(|&b| b == b'\n')
         .map(|line| parse_module(line, &id_map))
         .collect();
@@ -257,10 +263,6 @@ fn part1(input: &[u8]) -> usize {
     }
 
     modules.sort_by(|a, b| a.get_id().cmp(&b.get_id()));
-
-    for module in modules.iter() {
-        println!("{}", module.get_id());
-    }
 
     let mut inputs = vec![Vec::new(); id_map.id_to_bytes.len()];
 
@@ -285,17 +287,18 @@ fn part1(input: &[u8]) -> usize {
         let mut queue = VecDeque::new();
         queue.push_back((broadcast_id, (broadcast_id, Signal::Low)));
         while let Some((module_id, (input_id, signal))) = queue.pop_front() {
+            match signal {
+                Signal::Low => low_count += 1,
+                Signal::High => high_count += 1,
+            };
             let module = &mut modules[module_id];
             match module.process(input_id, signal) {
-                Either::Left(signal) => match signal {
-                    Signal::Low => low_count += 1,
-                    Signal::High => high_count += 1,
-                },
                 Either::Right((signal, destinations)) => {
                     for id in destinations {
                         queue.push_back((id, (module_id, signal)));
                     }
                 }
+                _ => {}
             }
         }
     }
@@ -304,7 +307,63 @@ fn part1(input: &[u8]) -> usize {
 }
 
 fn part2(input: &[u8]) -> usize {
-    0
+    let id_map = IdMap::parse(input);
+
+    let mut modules: Vec<Box<dyn Module>> = input
+        .split(|&b| b == b'\n')
+        .map(|line| parse_module(line, &id_map))
+        .collect();
+
+    for id in 0..id_map.id_to_bytes.len() {
+        let position = modules.iter().position(|module| module.get_id() == id);
+        if position.is_none() {
+            modules.push(Box::new(Output { id }));
+            break;
+        }
+    }
+
+    modules.sort_by(|a, b| a.get_id().cmp(&b.get_id()));
+
+    let mut inputs = vec![Vec::new(); id_map.id_to_bytes.len()];
+
+    for id in 0..modules.len() {
+        for destination in modules[id].get_destinations() {
+            inputs[*destination].push(id);
+        }
+    }
+
+    for id in 0..modules.len() {
+        for &input in inputs[id].iter() {
+            modules[id].add_input(input);
+        }
+    }
+
+    let broadcast_id = id_map.get_id(b"broadcaster");
+    let rx_id = id_map.get_id(b"rx");
+
+    let mut button_count = 0;
+
+    'outer: loop {
+        button_count += 1;
+        let mut queue = VecDeque::new();
+        queue.push_back((broadcast_id, (broadcast_id, Signal::Low)));
+        while let Some((module_id, (input_id, signal))) = queue.pop_front() {
+            let module = &mut modules[module_id];
+            if module.get_id() == rx_id && matches!(signal, Signal::Low) {
+                break 'outer;
+            }
+            match module.process(input_id, signal) {
+                Either::Right((signal, destinations)) => {
+                    for id in destinations {
+                        queue.push_back((id, (module_id, signal)));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    button_count
 }
 
 pub fn main() {
@@ -325,12 +384,6 @@ mod tests {
     fn test_part1() {
         let input = TEST_INPUT.trim_ascii_end();
         assert_eq!(part1(input), 11687500);
-    }
-
-    #[test]
-    fn test_part2() {
-        let input = TEST_INPUT.trim_ascii_end();
-        assert_eq!(part2(input), 0);
     }
 
     // #[bench]
