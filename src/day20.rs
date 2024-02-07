@@ -66,11 +66,11 @@ impl Module for FlipFlop {
             Signal::Low => match self.state {
                 FlipFlopState::Off => {
                     self.state = FlipFlopState::On;
-                    return Either::Right((Signal::High, self.destinations.clone()));
+                    Either::Right((Signal::High, self.destinations.clone()))
                 }
                 FlipFlopState::On => {
                     self.state = FlipFlopState::Off;
-                    return Either::Right((Signal::Low, self.destinations.clone()));
+                    Either::Right((Signal::Low, self.destinations.clone()))
                 }
             },
         }
@@ -161,10 +161,7 @@ trait Module: std::fmt::Debug {
 }
 
 fn parse_module(bytes: &[u8], id_map: &IdMap) -> Box<dyn Module> {
-    let id_start = bytes
-        .iter()
-        .position(|&b| matches!(b, b'a'..=b'z'))
-        .unwrap();
+    let id_start = bytes.iter().position(|&b| b.is_ascii_lowercase()).unwrap();
     let id_end = bytes.iter().position(|&b| b == b' ').unwrap();
 
     let id = id_map.get_id(&bytes[id_start..id_end]);
@@ -206,7 +203,7 @@ impl IdMap {
         let mut buf = Vec::new();
 
         for byte in input {
-            if matches!(byte, b'a'..=b'z') {
+            if byte.is_ascii_lowercase() {
                 buf.push(*byte);
                 continue;
             }
@@ -262,19 +259,19 @@ fn part1(input: &[u8]) -> usize {
         }
     }
 
-    modules.sort_by(|a, b| a.get_id().cmp(&b.get_id()));
+    modules.sort_by_key(|a| a.get_id());
 
     let mut inputs = vec![Vec::new(); id_map.id_to_bytes.len()];
 
-    for id in 0..modules.len() {
-        for destination in modules[id].get_destinations() {
+    for (id, module) in modules.iter().enumerate() {
+        for destination in module.get_destinations() {
             inputs[*destination].push(id);
         }
     }
 
-    for id in 0..modules.len() {
+    for (id, module) in modules.iter_mut().enumerate() {
         for &input in inputs[id].iter() {
-            modules[id].add_input(input);
+            module.add_input(input);
         }
     }
 
@@ -292,13 +289,10 @@ fn part1(input: &[u8]) -> usize {
                 Signal::High => high_count += 1,
             };
             let module = &mut modules[module_id];
-            match module.process(input_id, signal) {
-                Either::Right((signal, destinations)) => {
-                    for id in destinations {
-                        queue.push_back((id, (module_id, signal)));
-                    }
+            if let Either::Right((signal, destinations)) = module.process(input_id, signal) {
+                for id in destinations {
+                    queue.push_back((id, (module_id, signal)));
                 }
-                _ => {}
             }
         }
     }
@@ -322,48 +316,65 @@ fn part2(input: &[u8]) -> usize {
         }
     }
 
-    modules.sort_by(|a, b| a.get_id().cmp(&b.get_id()));
+    modules.sort_by_key(|a| a.get_id());
 
     let mut inputs = vec![Vec::new(); id_map.id_to_bytes.len()];
 
-    for id in 0..modules.len() {
-        for destination in modules[id].get_destinations() {
+    for (id, module) in modules.iter().enumerate() {
+        for destination in module.get_destinations() {
             inputs[*destination].push(id);
         }
     }
 
-    for id in 0..modules.len() {
+    for (id, module) in modules.iter_mut().enumerate() {
         for &input in inputs[id].iter() {
-            modules[id].add_input(input);
+            module.add_input(input);
         }
     }
 
     let broadcast_id = id_map.get_id(b"broadcaster");
-    let rx_id = id_map.get_id(b"rx");
+    let nd_id = id_map.get_id(b"nd");
+    let pc_id = id_map.get_id(b"pc");
+    let vd_id = id_map.get_id(b"vd");
+    let tx_id = id_map.get_id(b"tx");
 
     let mut button_count = 0;
 
-    'outer: loop {
+    let mut nd_count = None;
+    let mut pc_count = None;
+    let mut vd_count = None;
+    let mut tx_count = None;
+
+    loop {
+        if nd_count.is_some() && pc_count.is_some() && vd_count.is_some() && tx_count.is_some() {
+            break;
+        }
         button_count += 1;
         let mut queue = VecDeque::new();
         queue.push_back((broadcast_id, (broadcast_id, Signal::Low)));
         while let Some((module_id, (input_id, signal))) = queue.pop_front() {
             let module = &mut modules[module_id];
-            if module.get_id() == rx_id && matches!(signal, Signal::Low) {
-                break 'outer;
+            if module.get_id() == nd_id && matches!(signal, Signal::Low) && nd_count.is_none() {
+                nd_count = Some(button_count);
             }
-            match module.process(input_id, signal) {
-                Either::Right((signal, destinations)) => {
-                    for id in destinations {
-                        queue.push_back((id, (module_id, signal)));
-                    }
+            if module.get_id() == pc_id && matches!(signal, Signal::Low) && pc_count.is_none() {
+                pc_count = Some(button_count);
+            }
+            if module.get_id() == vd_id && matches!(signal, Signal::Low) && vd_count.is_none() {
+                vd_count = Some(button_count);
+            }
+            if module.get_id() == tx_id && matches!(signal, Signal::Low) && tx_count.is_none() {
+                tx_count = Some(button_count);
+            }
+            if let Either::Right((signal, destinations)) = module.process(input_id, signal) {
+                for id in destinations {
+                    queue.push_back((id, (module_id, signal)));
                 }
-                _ => {}
             }
         }
     }
 
-    button_count
+    nd_count.unwrap() * pc_count.unwrap() * vd_count.unwrap() * tx_count.unwrap()
 }
 
 pub fn main() {
@@ -386,15 +397,9 @@ mod tests {
         assert_eq!(part1(input), 11687500);
     }
 
-    // #[bench]
-    // fn bench_part1(b: &mut Bencher) {
-    //     let input = INPUT.trim_ascii_end();
-    //     b.iter(|| part1(input))
-    // }
-    //
-    // #[bench]
-    // fn bench_part2(b: &mut Bencher) {
-    //     let input = INPUT.trim_ascii_end();
-    //     b.iter(|| part2(input))
-    // }
+    #[bench]
+    fn bench_part1(b: &mut Bencher) {
+        let input = INPUT.trim_ascii_end();
+        b.iter(|| part1(input))
+    }
 }
