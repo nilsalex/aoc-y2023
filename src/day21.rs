@@ -1,5 +1,6 @@
 extern crate test;
 
+use std::collections::BinaryHeap;
 use std::collections::HashSet;
 
 const INPUT: &[u8] = include_bytes!("../inputs/day21.txt");
@@ -50,29 +51,91 @@ impl Grid {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+struct State {
+    pos: (isize, isize),
+    cost: usize,
+}
+
+impl State {
+    fn get_next(&self, grid: &Grid) -> Vec<State> {
+        let mut neighbors = Vec::new();
+
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let next_pos = (self.pos.0 + dx, self.pos.1 + dy);
+
+            if grid.is_rock(&next_pos) {
+                continue;
+            }
+
+            neighbors.push(State {
+                pos: next_pos,
+                cost: self.cost + 1,
+            });
+        }
+
+        neighbors
+    }
+}
+
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .cost
+            .cmp(&self.cost)
+            .then_with(|| self.pos.cmp(&other.pos))
+    }
+}
+
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 fn count_reachable(grid: &Grid, steps: usize) -> usize {
-    let mut reachable = HashSet::from([grid.start]);
+    let mut dist = vec![usize::MAX; (2 * steps + 1) * (2 * steps + 1)];
+    let mut heap = BinaryHeap::new();
+    let (mut even, mut odd) = (0, 0);
 
-    for _ in 0..steps {
-        let mut next_reachable = HashSet::new();
+    heap.push(State {
+        pos: grid.start,
+        cost: 0,
+    });
 
-        for &(row, col) in reachable.iter() {
-            for next in [
-                (row - 1, col),
-                (row + 1, col),
-                (row, col - 1),
-                (row, col + 1),
-            ] {
-                if !grid.is_rock(&next) {
-                    next_reachable.insert(next);
-                }
+    while let Some(state) = heap.pop() {
+        let pos_index = (2 * steps + 1) * (state.pos.0 - grid.start.0 + steps as isize) as usize
+            + (state.pos.1 - grid.start.1 + steps as isize) as usize;
+        if state.cost > dist[pos_index] {
+            continue;
+        }
+
+        for next in state.get_next(grid) {
+            if next.cost > steps {
+                continue;
+            }
+
+            let next_pos_index = (2 * steps + 1)
+                * (next.pos.0 - grid.start.0 + steps as isize) as usize
+                + (next.pos.1 - grid.start.1 + steps as isize) as usize;
+            if next.cost < dist[next_pos_index] {
+                dist[next_pos_index] = next.cost;
+                heap.push(next);
             }
         }
 
-        std::mem::swap(&mut reachable, &mut next_reachable);
+        if state.cost % 2 == 0 {
+            even += 1;
+        } else {
+            odd += 1;
+        }
     }
 
-    reachable.len()
+    if steps % 2 == 0 {
+        even - 1
+    } else {
+        odd
+    }
 }
 
 fn get_coefficients(f0: isize, f1: isize, f2: isize) -> (isize, isize, isize) {
