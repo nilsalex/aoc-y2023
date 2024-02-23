@@ -137,7 +137,17 @@ fn part1(input: &[u8]) -> usize {
 }
 
 fn part2(input: &[u8]) -> usize {
-    0
+    let replaced = input
+        .iter()
+        .cloned()
+        .map(|b| match b {
+            b'#' => b'#',
+            b'\n' => b'\n',
+            _ => b'.',
+        })
+        .collect::<Vec<u8>>();
+
+    part1(&replaced)
 }
 
 pub fn main() {
@@ -163,7 +173,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = TEST_INPUT.trim_ascii_end();
-        assert_eq!(part2(input), 0);
+        assert_eq!(part2(input), 154);
     }
 
     #[bench]
