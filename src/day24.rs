@@ -38,12 +38,12 @@ fn i128_from_bytes(bytes: &[u8]) -> i128 {
 }
 
 #[derive(Debug)]
-struct Line {
+struct Line2D {
     start: (i128, i128),
     dir: (i128, i128),
 }
 
-impl Line {
+impl Line2D {
     fn parse(bytes: &[u8]) -> Self {
         let mut nums = bytes.split(|&b| b == b',' || b == b'@');
 
@@ -69,7 +69,7 @@ impl Line {
         }
     }
 
-    fn intersection(&self, other: &Line) -> Option<(f64, f64)> {
+    fn intersection(&self, other: &Line2D) -> Option<(f64, f64)> {
         let d = self.dir.0 * other.dir.1 - self.dir.1 * other.dir.0;
 
         if d == 0 {
@@ -87,10 +87,36 @@ impl Line {
     }
 }
 
+#[derive(Debug)]
+struct Line3D {
+    start: (i128, i128, i128),
+    dir: (i128, i128, i128),
+}
+
+impl Line3D {
+    fn parse(bytes: &[u8]) -> Self {
+        let mut nums = bytes.split(|&b| b == b',' || b == b'@');
+
+        let start = (
+            i128_from_bytes(nums.next().unwrap().trim_ascii()),
+            i128_from_bytes(nums.next().unwrap().trim_ascii()),
+            i128_from_bytes(nums.next().unwrap().trim_ascii()),
+        );
+
+        let dir = (
+            i128_from_bytes(nums.next().unwrap().trim_ascii()),
+            i128_from_bytes(nums.next().unwrap().trim_ascii()),
+            i128_from_bytes(nums.next().unwrap().trim_ascii()),
+        );
+
+        Self { start, dir }
+    }
+}
+
 fn part1(input: &[u8], min: isize, max: isize) -> usize {
     let lines = input
         .split(|&b| b == b'\n')
-        .map(Line::parse)
+        .map(Line2D::parse)
         .collect::<Vec<_>>();
 
     let mut result = 0;
@@ -115,7 +141,58 @@ fn part1(input: &[u8], min: isize, max: isize) -> usize {
 }
 
 fn part2(input: &[u8]) -> usize {
-    0
+    let lines = input
+        .split(|&b| b == b'\n')
+        .take(3)
+        .map(Line3D::parse)
+        .collect::<Vec<_>>();
+
+    let p1 = (
+        lines[1].start.0 - lines[0].start.0,
+        lines[1].start.1 - lines[0].start.1,
+        lines[1].start.2 - lines[0].start.2,
+    );
+    let p2 = (
+        lines[2].start.0 - lines[0].start.0,
+        lines[2].start.1 - lines[0].start.1,
+        lines[2].start.2 - lines[0].start.2,
+    );
+
+    let v1 = (
+        lines[1].dir.0 - lines[0].dir.0,
+        lines[1].dir.1 - lines[0].dir.1,
+        lines[1].dir.2 - lines[0].dir.2,
+    );
+    let v2 = (
+        lines[2].dir.0 - lines[0].dir.0,
+        lines[2].dir.1 - lines[0].dir.1,
+        lines[2].dir.2 - lines[0].dir.2,
+    );
+
+    print!("{{");
+    print!("(y - x) * u - ({}) - ({}) * y,", p1.0, v1.0);
+    print!("(y - x) * v - ({}) - ({}) * y,", p1.1, v1.1);
+    print!("(y - x) * w - ({}) - ({}) * y,", p1.2, v1.2);
+
+    print!("(z - x) * u - ({}) - ({}) * z,", p2.0, v2.0);
+    print!("(z - x) * v - ({}) - ({}) * z,", p2.1, v2.1);
+    print!("(z - x) * w - ({}) - ({}) * z", p2.2, v2.2);
+    print!("}}");
+
+    println!();
+
+    // solved using wolfram alpha and groebner basis
+
+    let x = 568483965344_i128;
+    // let y = 547833135830 as i128;
+    // let z = 728788861354 as i128;
+
+    let u = -325_128;
+    let v = -200_i128;
+    let w = 247_i128;
+
+    ((-x * u) + lines[0].start.0 + (-x * v) + lines[0].start.1 + (-x * w) + lines[0].start.2)
+        as usize
 }
 
 pub fn main() {
@@ -141,13 +218,13 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = TEST_INPUT.trim_ascii_end();
-        assert_eq!(part2(input), 0);
+        assert_eq!(part2(input), 47);
     }
 
     #[bench]
     fn bench_part1(b: &mut Bencher) {
         let input = INPUT.trim_ascii_end();
-        b.iter(|| part1(input, 7, 27))
+        b.iter(|| part1(input, 200000000000000, 400000000000000))
     }
 
     #[bench]
